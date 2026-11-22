@@ -1,4 +1,4 @@
-const CACHE_NAME = "daymark-shell-v1";
+const CACHE_NAME = "daymark-shell-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -57,4 +57,59 @@ self.addEventListener("fetch", event => {
       return response;
     }))
   );
+});
+
+self.addEventListener("push", event => {
+  let message = {};
+  if (event.data) {
+    try {
+      const parsed = event.data.json();
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) message = parsed;
+    } catch (error) {
+      message = { body: event.data.text() };
+    }
+  }
+  const title = typeof message.title === "string" ? message.title : "Daymark reminder";
+  const body = typeof message.body === "string" ? message.body : "A task deadline is approaching.";
+  const data = message.data && typeof message.data === "object" ? message.data : {};
+  let url = new URL("./", self.location.origin).href;
+  if (typeof data.url === "string") {
+    try {
+      const candidate = new URL(data.url, self.location.origin);
+      if (candidate.origin === self.location.origin) url = candidate.href;
+    } catch (error) {
+      url = new URL("./", self.location.origin).href;
+    }
+  }
+  event.waitUntil(self.registration.showNotification(title, {
+    body,
+    tag: typeof message.tag === "string" ? message.tag : "daymark-reminder",
+    icon: "./icons/daymark-192.png",
+    badge: "./icons/daymark-192.png",
+    data: { url }
+  }));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const url = event.notification.data && typeof event.notification.data.url === "string"
+    ? event.notification.data.url
+    : new URL("./", self.location.origin).href;
+  let safeUrl;
+  try {
+    safeUrl = new URL(url, self.location.origin);
+  } catch (error) {
+    safeUrl = new URL("./", self.location.origin);
+  }
+  if (safeUrl.origin !== self.location.origin) return;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if (new URL(client.url).origin === self.location.origin && "focus" in client) {
+        await client.focus();
+        return;
+      }
+    }
+    await self.clients.openWindow(safeUrl.href);
+  })());
 });

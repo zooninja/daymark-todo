@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080d0c">
   <meta name="description" content="A quiet, local-first mission board for focused work.">
+  <meta name="daymark-alert-api" content="">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -461,6 +462,10 @@
       letter-spacing: 0.11em;
     }
 
+    .task-metadata > .metadata-field:first-child {
+      grid-column: 1 / -1;
+    }
+
     .metadata-field select,
     .metadata-field input {
       width: 100%;
@@ -483,6 +488,108 @@
 
     .metadata-field select {
       cursor: pointer;
+    }
+
+    .alarm-settings {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: end;
+      gap: 12px;
+      padding: 8px 7px 3px;
+      border-top: 1px solid var(--line);
+    }
+
+    .alarm-toggle {
+      display: flex;
+      min-height: 31px;
+      align-items: center;
+      gap: 7px;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+
+    .alarm-toggle input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .alarm-lead {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .alarm-lead input,
+    .alarm-lead select {
+      min-width: 0;
+      height: 31px;
+      padding: 0 7px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      outline: 0;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .alarm-lead input {
+      width: 58px;
+    }
+
+    .alarm-lead select {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .alarm-lead :disabled {
+      opacity: 0.48;
+    }
+
+    .alarm-help {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.4;
+    }
+
+    .alarm-feedback {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 9px 2px 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .alarm-feedback[data-error="true"] {
+      color: var(--danger);
+    }
+
+    .alarm-feedback[hidden] {
+      display: none;
+    }
+
+    .alarm-feedback button {
+      flex: 0 0 auto;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 700;
     }
 
     .filter-bar,
@@ -740,6 +847,11 @@
       color: var(--danger);
     }
 
+    .alarm-badge {
+      border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+      color: var(--accent);
+    }
+
     .task-row.is-complete .task-badges {
       opacity: 0.58;
     }
@@ -775,6 +887,15 @@
         position: static;
         width: 100%;
         margin-top: 8px;
+      }
+
+      .alarm-settings {
+        grid-template-columns: 1fr;
+        gap: 5px;
+      }
+
+      .alarm-lead {
+        flex-wrap: wrap;
       }
     }
 
@@ -870,12 +991,36 @@
           <span>GROUP</span>
           <select id="task-group" aria-label="Task group"></select>
         </label>
-        <label class="metadata-field due-field">
-          <span>DUE DATE</span>
+        <label class="metadata-field">
+          <span>DEADLINE DATE</span>
           <input id="task-due" type="date" aria-label="Due date (optional)">
         </label>
+        <label class="metadata-field">
+          <span>DEADLINE TIME</span>
+          <input id="task-time" type="time" aria-label="Deadline time (required for alarms)">
+        </label>
+        <div class="alarm-settings">
+          <label class="alarm-toggle">
+            <input id="task-alarm" type="checkbox">
+            <span>Set an alarm</span>
+          </label>
+          <div class="alarm-lead">
+            <span>Remind me</span>
+            <input id="alarm-lead-value" type="number" min="1" max="10080" value="15" aria-label="Reminder lead time" disabled>
+            <select id="alarm-lead-unit" aria-label="Reminder time unit" disabled>
+              <option value="minutes">minutes before</option>
+              <option value="hours">hours before</option>
+              <option value="days">days before</option>
+            </select>
+          </div>
+          <p class="alarm-help">Needs internet to sync; Android can alert while Daymark is closed using system sound and vibration settings.</p>
+        </div>
       </div>
     </form>
+    <div class="alarm-feedback" id="alarm-feedback" role="status" aria-live="polite" hidden>
+      <span id="alarm-feedback-text"></span>
+      <button id="retry-alarms" type="button" hidden>Retry alarms</button>
+    </div>
 
     <nav class="filter-bar" id="filter-bar" aria-label="Filter tasks"></nav>
     <div class="group-scope">
@@ -921,11 +1066,21 @@
     (() => {
       const TASKS_KEY = "daymark.tasks.v1";
       const GROUPS_KEY = "daymark.groups.v1";
+      const PENDING_DELETES_KEY = "daymark.pending-reminder-deletes.v1";
       const DEFAULT_GROUP = "Inbox";
+      const ALERT_API_BASE = document.querySelector('meta[name="daymark-alert-api"]')
+        .content.trim().replace(/\/$/, "");
       const taskList = document.getElementById("task-list");
       const taskForm = document.getElementById("task-form");
       const taskInput = document.getElementById("task-input");
       const taskDue = document.getElementById("task-due");
+      const taskTime = document.getElementById("task-time");
+      const taskAlarm = document.getElementById("task-alarm");
+      const alarmLeadValue = document.getElementById("alarm-lead-value");
+      const alarmLeadUnit = document.getElementById("alarm-lead-unit");
+      const alarmFeedback = document.getElementById("alarm-feedback");
+      const alarmFeedbackText = document.getElementById("alarm-feedback-text");
+      const retryAlarmsButton = document.getElementById("retry-alarms");
       const taskGroup = document.getElementById("task-group");
       const remaining = document.getElementById("remaining");
       const emptyState = document.getElementById("empty-state");
@@ -939,6 +1094,7 @@
       const storageMessage = document.getElementById("storage-message");
       const installButton = document.getElementById("install-button");
       const pwaStatus = document.getElementById("pwa-status");
+      const DEVICE_TOKEN_KEY = "daymark.device-token.v1";
       const filterOptions = [
         { id: "all", label: "All" },
         { id: "open", label: "Active" },
@@ -947,13 +1103,14 @@
         { id: "done", label: "Done" }
       ];
       const starterTasks = [
-        { id: "starter-1", text: "Review this week's priorities", completed: false, dueDate: localDateKey(), group: DEFAULT_GROUP },
-        { id: "starter-2", text: "Send the project update", completed: false, dueDate: dateOffset(1), group: DEFAULT_GROUP },
-        { id: "starter-3", text: "Take a proper lunch break", completed: false, dueDate: "", group: DEFAULT_GROUP }
+        { id: "starter-1", text: "Review this week's priorities", completed: false, dueDate: localDateKey(), dueTime: "", alarmEnabled: false, reminderLeadValue: 15, reminderLeadUnit: "minutes", group: DEFAULT_GROUP },
+        { id: "starter-2", text: "Send the project update", completed: false, dueDate: dateOffset(1), dueTime: "", alarmEnabled: false, reminderLeadValue: 15, reminderLeadUnit: "minutes", group: DEFAULT_GROUP },
+        { id: "starter-3", text: "Take a proper lunch break", completed: false, dueDate: "", dueTime: "", alarmEnabled: false, reminderLeadValue: 15, reminderLeadUnit: "minutes", group: DEFAULT_GROUP }
       ];
       let canSave = true;
       let groups = readGroups();
       let tasks = readTasks();
+      let pendingReminderDeletes = readPendingReminderDeletes();
       let activeFilter = "all";
       let activeGroup = "*";
       let deferredInstallPrompt = null;
@@ -1011,6 +1168,12 @@
         return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
       }
 
+      function isTimeKey(value) {
+        if (typeof value !== "string" || !/^\d{2}:\d{2}$/.test(value)) return false;
+        const [hour, minute] = value.split(":").map(Number);
+        return hour < 24 && minute < 60;
+      }
+
       function readTasks() {
         try {
           const saved = localStorage.getItem(TASKS_KEY);
@@ -1022,11 +1185,44 @@
           return parsed.map(task => ({
             ...task,
             dueDate: isDateKey(task.dueDate) ? task.dueDate : "",
+            dueTime: isTimeKey(task.dueTime) ? task.dueTime : "",
+            alarmEnabled: task.alarmEnabled === true &&
+              isDateKey(task.dueDate) &&
+              isTimeKey(task.dueTime),
+            reminderLeadValue: Number.isInteger(task.reminderLeadValue) &&
+              task.reminderLeadValue >= 1 && task.reminderLeadValue <= 10080
+                ? task.reminderLeadValue
+                : 15,
+            reminderLeadUnit: ["minutes", "hours", "days"].includes(task.reminderLeadUnit)
+              ? task.reminderLeadUnit
+              : "minutes",
             group: typeof task.group === "string" && groups.includes(task.group) ? task.group : groups[0]
           }));
         } catch (error) {
           showStorageWarning("Couldn't load saved tasks; starter list shown for now.");
           return starterTasks.map(task => ({ ...task }));
+        }
+      }
+
+      function readPendingReminderDeletes() {
+        try {
+          const saved = localStorage.getItem(PENDING_DELETES_KEY);
+          if (saved === null) return [];
+          const parsed = JSON.parse(saved);
+          return Array.isArray(parsed)
+            ? [...new Set(parsed.filter(id => typeof id === "string" && id.length <= 80))]
+            : [];
+        } catch (error) {
+          showStorageWarning("Couldn't load pending alarm changes.");
+          return [];
+        }
+      }
+
+      function savePendingReminderDeletes() {
+        try {
+          localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(pendingReminderDeletes));
+        } catch (error) {
+          showStorageWarning("Couldn't save pending alarm changes.");
         }
       }
 
@@ -1104,9 +1300,19 @@
         if (due) {
           const dueBadge = document.createElement("time");
           dueBadge.className = `due-badge${due.overdue ? " is-overdue" : ""}`;
-          dueBadge.dateTime = task.dueDate;
-          dueBadge.textContent = due.text;
+          dueBadge.dateTime = task.dueTime ? `${task.dueDate}T${task.dueTime}` : task.dueDate;
+          const timeText = task.dueTime
+            ? new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" })
+                .format(new Date(`${task.dueDate}T${task.dueTime}`))
+            : "";
+          dueBadge.textContent = timeText ? `${due.text} · ${timeText}` : due.text;
           badges.append(dueBadge);
+        }
+        if (task.alarmEnabled) {
+          const alarmBadge = document.createElement("span");
+          alarmBadge.className = "due-badge alarm-badge";
+          alarmBadge.textContent = `Alarm ${task.reminderLeadValue} ${task.reminderLeadUnit} before`;
+          badges.append(alarmBadge);
         }
         content.append(badges);
         label.append(content);
@@ -1222,7 +1428,185 @@
         managerMessage.dataset.error = String(isError);
       }
 
-      taskForm.addEventListener("submit", event => {
+      function setAlarmFeedback(message, isError = false, canRetry = false) {
+        alarmFeedback.hidden = !message;
+        alarmFeedback.dataset.error = String(isError);
+        alarmFeedbackText.textContent = message;
+        retryAlarmsButton.hidden = !canRetry;
+      }
+
+      function errorText(error) {
+        return error instanceof Error ? error.message : "An unexpected alarm error occurred.";
+      }
+
+      async function alertApi(path, method, token, body) {
+        const headers = {};
+        if (token) headers.Authorization = `Bearer ${token}`;
+        if (body !== undefined) headers["Content-Type"] = "application/json";
+        const response = await fetch(`${ALERT_API_BASE}${path}`, {
+          method,
+          headers,
+          body: body === undefined ? undefined : JSON.stringify(body)
+        });
+        let result = null;
+        try {
+          result = await response.json();
+        } catch (error) {
+          if (!(error instanceof SyntaxError)) throw error;
+        }
+        if (!response.ok) {
+          throw new Error(result && typeof result.error === "string"
+            ? result.error
+            : `Alarm service returned ${response.status}.`);
+        }
+        return result;
+      }
+
+      function encodeBase64Url(bytes) {
+        let binary = "";
+        bytes.forEach(byte => { binary += String.fromCharCode(byte); });
+        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+
+      function decodeBase64Url(value) {
+        const padded = value.replace(/-/g, "+").replace(/_/g, "/");
+        const raw = atob(padded + "=".repeat((4 - padded.length % 4) % 4));
+        return Uint8Array.from(raw, character => character.charCodeAt(0));
+      }
+
+      function readDeviceToken() {
+        let token = localStorage.getItem(DEVICE_TOKEN_KEY);
+        if (!token || !/^[A-Za-z0-9_-]{40,100}$/.test(token)) {
+          token = encodeBase64Url(crypto.getRandomValues(new Uint8Array(32)));
+          localStorage.setItem(DEVICE_TOKEN_KEY, token);
+        }
+        return token;
+      }
+
+      async function ensurePushDevice() {
+        if (!ALERT_API_BASE) {
+          throw new Error("Android alarms are not configured on this app yet.");
+        }
+        if (!window.isSecureContext || !("serviceWorker" in navigator) ||
+            !("PushManager" in window) || !("Notification" in window)) {
+          throw new Error("Push alarms need the installed app on an HTTPS browser.");
+        }
+        if (Notification.permission === "denied") {
+          throw new Error("Notifications are blocked for Daymark in Android settings.");
+        }
+        if (Notification.permission !== "granted") {
+          const permission = await Notification.requestPermission();
+          if (permission !== "granted") {
+            throw new Error("Allow notifications to use deadline alarms.");
+          }
+        }
+
+        const config = await alertApi("/api/config", "GET");
+        if (!config || typeof config.vapidPublicKey !== "string" ||
+            config.vapidPublicKey.startsWith("REPLACE_WITH_")) {
+          throw new Error("The alarm service does not have push keys configured.");
+        }
+        const registration = await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: decodeBase64Url(config.vapidPublicKey)
+          });
+        }
+        const token = readDeviceToken();
+        await alertApi("/api/device", "PUT", token, subscription.toJSON());
+        return token;
+      }
+
+      function reminderLeadMinutes(task) {
+        const multiplier = { minutes: 1, hours: 60, days: 1440 }[task.reminderLeadUnit] || 1;
+        return task.reminderLeadValue * multiplier;
+      }
+
+      async function syncRemoteReminder(task, token) {
+        const dueAt = new Date(`${task.dueDate}T${task.dueTime}`).getTime();
+        if (!Number.isFinite(dueAt) || dueAt <= Date.now()) {
+          throw new Error("Choose a future deadline before setting an alarm.");
+        }
+        await alertApi(`/api/reminders/${encodeURIComponent(task.id)}`, "PUT", token, {
+          title: task.text,
+          dueAt,
+          leadMinutes: reminderLeadMinutes(task)
+        });
+      }
+
+      async function syncPendingDeletes(token) {
+        for (const id of [...pendingReminderDeletes]) {
+          await alertApi(`/api/reminders/${encodeURIComponent(id)}`, "DELETE", token);
+          pendingReminderDeletes = pendingReminderDeletes.filter(item => item !== id);
+          savePendingReminderDeletes();
+        }
+      }
+
+      async function syncRemoteState() {
+        if (!("Notification" in window) || Notification.permission !== "granted" ||
+            (!pendingReminderDeletes.length && !tasks.some(task => task.alarmEnabled && !task.completed))) {
+          return;
+        }
+        const token = await ensurePushDevice();
+        await syncPendingDeletes(token);
+        for (const task of tasks) {
+          if (task.alarmEnabled && !task.completed) await syncRemoteReminder(task, token);
+        }
+      }
+
+      function queueReminderDelete(id) {
+        if (!pendingReminderDeletes.includes(id)) {
+          pendingReminderDeletes.push(id);
+          savePendingReminderDeletes();
+        }
+        if (!ALERT_API_BASE) return;
+        try {
+          const token = localStorage.getItem(DEVICE_TOKEN_KEY);
+          if (!token) return;
+          syncPendingDeletes(token)
+            .then(() => setAlarmFeedback("Alarm canceled.", false))
+            .catch(error => setAlarmFeedback(`Alarm cancellation will retry: ${errorText(error)}`, true, true));
+        } catch (error) {
+          setAlarmFeedback(`Alarm cancellation will retry: ${errorText(error)}`, true, true);
+        }
+      }
+
+      function updateAlarmControls() {
+        const enabled = taskAlarm.checked;
+        taskDue.required = enabled;
+        taskTime.required = enabled;
+        alarmLeadValue.required = enabled;
+        alarmLeadValue.disabled = !enabled;
+        alarmLeadUnit.disabled = !enabled;
+        const maximumByUnit = { minutes: 10080, hours: 168, days: 7 };
+        alarmLeadValue.max = String(maximumByUnit[alarmLeadUnit.value] || 10080);
+        if (Number(alarmLeadValue.value) > Number(alarmLeadValue.max)) {
+          alarmLeadValue.value = alarmLeadValue.max;
+        }
+      }
+
+      taskAlarm.addEventListener("change", updateAlarmControls);
+      alarmLeadUnit.addEventListener("change", updateAlarmControls);
+      retryAlarmsButton.addEventListener("click", async () => {
+        retryAlarmsButton.disabled = true;
+        setAlarmFeedback("Syncing alarms…");
+        try {
+          const token = await ensurePushDevice();
+          await syncPendingDeletes(token);
+          for (const task of tasks) {
+            if (task.alarmEnabled && !task.completed) await syncRemoteReminder(task, token);
+          }
+          setAlarmFeedback("Alarms are synced to this device.");
+        } catch (error) {
+          setAlarmFeedback(`Couldn't sync alarms: ${errorText(error)}`, true, true);
+        } finally {
+          retryAlarmsButton.disabled = false;
+        }
+      });
+
+      taskForm.addEventListener("submit", async event => {
         event.preventDefault();
         const text = taskInput.value.trim();
         if (!text) {
@@ -1230,21 +1614,62 @@
           return;
         }
 
+        const alarmEnabled = taskAlarm.checked;
+        if (alarmEnabled && (!isDateKey(taskDue.value) || !isTimeKey(taskTime.value))) {
+          setAlarmFeedback("An alarm needs both a valid deadline date and time.", true);
+          (taskDue.value ? taskTime : taskDue).focus();
+          return;
+        }
+        if (alarmEnabled && new Date(`${taskDue.value}T${taskTime.value}`).getTime() <= Date.now()) {
+          setAlarmFeedback("Choose a future deadline before setting an alarm.", true);
+          taskTime.focus();
+          return;
+        }
+
+        const addButton = taskForm.querySelector('button[type="submit"]');
+        addButton.disabled = true;
+        let deviceToken = null;
+        if (alarmEnabled) {
+          try {
+            deviceToken = await ensurePushDevice();
+          } catch (error) {
+            setAlarmFeedback(`Couldn't enable the alarm: ${errorText(error)}`, true, true);
+            addButton.disabled = false;
+            return;
+          }
+        }
+
         const group = taskGroup.value || groups[0];
-        tasks.push({
+        const task = {
           id: newId(),
           text,
           completed: false,
           dueDate: taskDue.value,
+          dueTime: taskTime.value,
+          alarmEnabled,
+          reminderLeadValue: Number(alarmLeadValue.value),
+          reminderLeadUnit: alarmLeadUnit.value,
           group
-        });
+        };
+        tasks.push(task);
         activeFilter = "all";
         activeGroup = group;
         saveState();
         render();
         taskForm.reset();
+        updateAlarmControls();
         taskGroup.value = group;
         taskInput.focus();
+        setAlarmFeedback("");
+        if (deviceToken) {
+          try {
+            await syncRemoteReminder(task, deviceToken);
+            setAlarmFeedback("Alarm set for this Android device.");
+          } catch (error) {
+            setAlarmFeedback(`Task saved, but its alarm couldn't sync: ${errorText(error)}`, true, true);
+          }
+        }
+        addButton.disabled = false;
       });
 
       filterBar.addEventListener("click", event => {
@@ -1272,6 +1697,15 @@
         saveState();
         row.classList.toggle("is-complete", task.completed);
         updateRemaining();
+        if (task.completed && task.alarmEnabled) {
+          queueReminderDelete(task.id);
+        } else if (!task.completed && task.alarmEnabled) {
+          pendingReminderDeletes = pendingReminderDeletes.filter(id => id !== task.id);
+          savePendingReminderDeletes();
+          syncRemoteState().catch(error =>
+            setAlarmFeedback(`Couldn't sync the alarm: ${errorText(error)}`, true, true)
+          );
+        }
         if (!taskIsVisible(task)) {
           row.classList.add("task-row-exiting");
           window.setTimeout(render, 170);
@@ -1282,6 +1716,8 @@
         const button = event.target.closest(".delete-button");
         if (!button) return;
         const row = button.closest("[data-task-id]");
+        const task = tasks.find(item => item.id === row.dataset.taskId);
+        if (task && task.alarmEnabled) queueReminderDelete(task.id);
         tasks = tasks.filter(task => task.id !== row.dataset.taskId);
         saveState();
         render();
@@ -1363,6 +1799,7 @@
         day: "numeric"
       }).format(now);
       today.dateTime = localDateKey(now);
+      updateAlarmControls();
       saveState();
       render();
 
@@ -1397,12 +1834,20 @@
           .then(() => {
             pwaStatus.textContent = "Offline access is ready after this first visit.";
             pwaStatus.hidden = false;
+            syncRemoteState().catch(error =>
+              setAlarmFeedback(`Couldn't sync alarms: ${errorText(error)}`, true, true)
+            );
           })
           .catch(() => {
             pwaStatus.textContent = "Offline setup failed; Daymark still works online.";
             pwaStatus.hidden = false;
           });
       }
+      window.addEventListener("online", () => {
+        syncRemoteState().catch(error =>
+          setAlarmFeedback(`Couldn't sync alarms: ${errorText(error)}`, true, true)
+        );
+      });
     })();
   </script>
 </body>
