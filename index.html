@@ -1,0 +1,1328 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080d0c">
+  <title>Daymark — quiet focus</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 15px;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      --page: #e9ecea;
+      --surface: #f6f7f4;
+      --surface-raised: #ffffff;
+      --ink: #19201e;
+      --muted: #687571;
+      --line: #dce2de;
+      --accent: #b6273b;
+      --accent-hover: #971b2d;
+      --accent-soft: #f6e8e9;
+      --danger: #bd3345;
+      --focus: #759a2a;
+      --shadow: 0 24px 70px rgb(25 35 32 / 13%), 0 2px 8px rgb(25 35 32 / 5%);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --page: #080d0c;
+        --surface: #101715;
+        --surface-raised: #18211e;
+        --ink: #e9f1ed;
+        --muted: #9aa8a1;
+        --line: #2b3933;
+        --accent: #c1f254;
+        --accent-hover: #d5ff78;
+        --accent-soft: #222f1d;
+        --danger: #ff7888;
+        --focus: #c1f254;
+        --shadow: 0 28px 80px rgb(0 0 0 / 45%), 0 2px 8px rgb(0 0 0 / 26%);
+      }
+
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      padding: 48px 20px;
+      background:
+        radial-gradient(ellipse at 50% 0%, rgb(193 242 84 / 9%), transparent 37%),
+        radial-gradient(ellipse at 10% 70%, rgb(176 31 54 / 8%), transparent 35%),
+        var(--page);
+      color: var(--ink);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+    }
+
+    .app {
+      width: min(100%, 480px);
+      margin: 0 auto;
+      padding: 32px;
+      border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 25px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 9px 9px 9px 3px;
+      background: var(--accent);
+      color: var(--page);
+    }
+
+    .brand-mark svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .date {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 550;
+      text-align: right;
+    }
+
+    .intro {
+      padding: 28px 0 25px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(27px, 6vw, 34px);
+      font-weight: 760;
+      letter-spacing: -0.055em;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .task-form {
+      display: flex;
+      gap: 9px;
+      padding: 6px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-raised);
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .task-form:focus-within {
+      border-color: var(--focus);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 17%, transparent);
+    }
+
+    .task-input {
+      width: 100%;
+      min-width: 0;
+      padding: 10px 11px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 15px;
+    }
+
+    .task-input::placeholder {
+      color: var(--muted);
+      opacity: 0.82;
+    }
+
+    .add-button {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 40px;
+      padding: 0 14px;
+      border: 0;
+      border-radius: 9px;
+      background: var(--accent);
+      color: var(--page);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 650;
+      transition: background-color 160ms ease, transform 160ms ease;
+    }
+
+    .add-button:hover {
+      background: var(--accent-hover);
+    }
+
+    .add-button:active {
+      transform: scale(0.97);
+    }
+
+    .add-button svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .list-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 27px 2px 9px;
+    }
+
+    .list-heading h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .remaining {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 550;
+    }
+
+    .task-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .task-row {
+      display: flex;
+      min-height: 62px;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 2px 10px 3px;
+      border-bottom: 1px solid var(--line);
+      animation: arrive 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    }
+
+    .task-row:last-child {
+      border-bottom: 0;
+    }
+
+    .task-toggle {
+      position: relative;
+      display: grid;
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      margin: 0;
+      place-items: center;
+      appearance: none;
+      border: 1.5px solid #aeb8cb;
+      border-radius: 7px;
+      background: transparent;
+      cursor: pointer;
+      transition: border-color 190ms ease, background-color 190ms ease, transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .task-toggle::after {
+      width: 5px;
+      height: 9px;
+      margin-top: -2px;
+      border: solid var(--surface);
+      border-width: 0 2px 2px 0;
+      content: "";
+      transform: rotate(45deg) scale(0);
+      transition: transform 190ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .task-toggle:hover {
+      border-color: var(--accent);
+    }
+
+    .task-toggle:checked {
+      border-color: var(--accent);
+      background: var(--accent);
+      transform: scale(1.05);
+    }
+
+    .task-toggle:checked::after {
+      transform: rotate(45deg) scale(1);
+    }
+
+    .task-toggle:focus-visible,
+    button:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--focus) 60%, transparent);
+      outline-offset: 3px;
+    }
+
+    .task-label {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      min-width: 0;
+      gap: 12px;
+      overflow-wrap: anywhere;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 15px;
+      transition: color 180ms ease, opacity 180ms ease;
+    }
+
+    .task-row.is-complete .task-label {
+      color: var(--muted);
+      text-decoration: line-through;
+      text-decoration-thickness: 1px;
+      text-decoration-color: color-mix(in srgb, var(--muted) 70%, transparent);
+    }
+
+    .delete-button {
+      display: grid;
+      flex: 0 0 auto;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 0;
+      border-radius: 9px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      opacity: 0;
+      transition: background-color 160ms ease, color 160ms ease, opacity 160ms ease;
+    }
+
+    .task-row:hover .delete-button,
+    .delete-button:focus-visible {
+      opacity: 1;
+    }
+
+    .delete-button:hover {
+      background: color-mix(in srgb, var(--danger) 10%, transparent);
+      color: var(--danger);
+    }
+
+    .delete-button svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .empty-state {
+      padding: 27px 12px 25px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-state[hidden] {
+      display: none;
+    }
+
+    .empty-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      margin: 0 auto 11px;
+      place-items: center;
+      border-radius: 13px;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .empty-mark svg {
+      width: 21px;
+      height: 21px;
+    }
+
+    .empty-state p {
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .app-footer {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 21px;
+      padding-top: 15px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .storage-dot {
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: #3a9d77;
+    }
+
+    .app-footer.has-warning .storage-dot {
+      background: #d98537;
+    }
+
+    .task-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      border-radius: 12px;
+      background: var(--surface-raised);
+    }
+
+    .task-metadata {
+      display: grid;
+      grid-column: 1 / -1;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      padding: 8px 7px 3px;
+      border-top: 1px solid var(--line);
+    }
+
+    .metadata-field {
+      display: grid;
+      min-width: 0;
+      gap: 3px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.11em;
+    }
+
+    .metadata-field select,
+    .metadata-field input {
+      width: 100%;
+      min-width: 0;
+      height: 31px;
+      padding: 0 7px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      outline: 0;
+      background: transparent;
+      color: var(--ink);
+      font-size: 12px;
+      letter-spacing: 0;
+    }
+
+    .metadata-field select:focus-visible,
+    .metadata-field input:focus-visible {
+      border-color: var(--focus);
+    }
+
+    .metadata-field select {
+      cursor: pointer;
+    }
+
+    .filter-bar,
+    .group-filters {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .filter-bar::-webkit-scrollbar,
+    .group-filters::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filter-bar {
+      margin: 20px 0 13px;
+      padding: 2px 2px 4px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .filter-button,
+    .group-chip {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 31px;
+      padding: 0 11px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 650;
+      transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+    }
+
+    .filter-button:hover,
+    .group-chip:hover {
+      color: var(--ink);
+    }
+
+    .filter-button[aria-pressed="true"] {
+      border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .group-scope {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 0 0 22px;
+    }
+
+    .group-filters {
+      flex: 1;
+    }
+
+    .group-chip {
+      min-height: 27px;
+      padding: 0 9px;
+      border-color: var(--line);
+      background: color-mix(in srgb, var(--surface-raised) 72%, transparent);
+      font-size: 11px;
+    }
+
+    .group-chip[aria-pressed="true"] {
+      border-color: var(--ink);
+      background: var(--ink);
+      color: var(--surface);
+    }
+
+    .group-manager {
+      position: relative;
+      flex: 0 0 auto;
+    }
+
+    .group-manager summary {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 650;
+      list-style: none;
+      white-space: nowrap;
+    }
+
+    .group-manager summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .manager-plus {
+      color: var(--accent);
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .manager-panel {
+      position: absolute;
+      z-index: 3;
+      top: calc(100% + 10px);
+      right: 0;
+      width: min(330px, calc(100vw - 56px));
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-raised);
+      box-shadow: var(--shadow);
+    }
+
+    .new-group-form {
+      display: flex;
+      gap: 7px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .new-group-form input,
+    .group-edit-form input {
+      min-width: 0;
+      flex: 1;
+      padding: 7px 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      outline: 0;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 12px;
+    }
+
+    .new-group-form input:focus,
+    .group-edit-form input:focus {
+      border-color: var(--focus);
+    }
+
+    .new-group-form button,
+    .group-edit-form button {
+      padding: 0 10px;
+      border: 0;
+      border-radius: 7px;
+      background: var(--accent);
+      color: var(--page);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .group-list {
+      display: grid;
+      gap: 7px;
+      max-height: 190px;
+      margin: 10px 0 0;
+      padding: 0;
+      overflow-y: auto;
+      list-style: none;
+    }
+
+    .group-edit-form {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .group-edit-form .remove-group {
+      width: 28px;
+      height: 28px;
+      flex: 0 0 auto;
+      padding: 0;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 17px;
+    }
+
+    .group-edit-form .remove-group:hover {
+      background: color-mix(in srgb, var(--danger) 12%, transparent);
+      color: var(--danger);
+    }
+
+    .manager-message {
+      min-height: 16px;
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .manager-message[data-error="true"] {
+      color: var(--danger);
+    }
+
+    .task-row {
+      min-height: 66px;
+    }
+
+    .task-row-exiting {
+      opacity: 0;
+      transform: translateX(7px);
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+
+    .task-label {
+      gap: 11px;
+    }
+
+    .task-content {
+      display: grid;
+      min-width: 0;
+      flex: 1;
+      gap: 4px;
+    }
+
+    .task-text {
+      overflow-wrap: anywhere;
+    }
+
+    .task-badges {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .task-group-badge,
+    .due-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      max-width: 100%;
+      padding: 1px 6px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .due-badge {
+      border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+      color: var(--accent);
+    }
+
+    .due-badge.is-overdue {
+      border-color: color-mix(in srgb, var(--danger) 35%, var(--line));
+      color: var(--danger);
+    }
+
+    .task-row.is-complete .task-badges {
+      opacity: 0.58;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      clip-path: inset(50%);
+    }
+
+    @media (max-width: 520px) {
+      .group-scope {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 9px;
+      }
+
+      .group-manager summary {
+        font-size: 10px;
+      }
+
+      .group-manager {
+        width: 100%;
+      }
+
+      .manager-panel {
+        position: static;
+        width: 100%;
+        margin-top: 8px;
+      }
+    }
+
+    @keyframes arrive {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 520px) {
+      body {
+        padding: 20px 12px;
+      }
+
+      .app {
+        padding: 24px 20px;
+        border-radius: 14px;
+      }
+
+      .intro {
+        padding-top: 25px;
+      }
+
+      .delete-button {
+        opacity: 0.65;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!--
+    THESIS: A personal task list is a quiet mission board, not a noisy project dashboard.
+    OWN-WORLD: Charcoal surfaces, acid-green signals, muted steel, and precise red seals.
+    STORY: Sort missions into groups, set a deadline, then move through them one at a time.
+    FIRST VIEWPORT: A centered 480px board with date, mission entry, filters, and focused list.
+    FORM: A stealth checklist with visible task states and no competing panels.
+  -->
+  <main class="app" aria-labelledby="page-title">
+    <header class="topline">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="none">
+            <path d="M10 2.8 12 7l4.4-1.6L14.8 10l4.2 2-4.2 2 1.6 4.4L12 16.8l-2 4.2-2-4.2-4.4 1.6L5.2 14 1 12l4.2-2L3.6 5.6 8 7l2-4.2Z" transform="translate(0 -1)" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <span>Daymark</span>
+      </div>
+      <time class="date" id="today"></time>
+    </header>
+
+    <section class="intro">
+      <h1 id="page-title">Move quietly.</h1>
+      <p class="subtitle">Sharp focus. One mission at a time.</p>
+    </section>
+
+    <form class="task-form" id="task-form">
+      <input
+        class="task-input"
+        id="task-input"
+        name="task"
+        type="text"
+        maxlength="140"
+        placeholder="What needs doing?"
+        aria-label="New task"
+        autocomplete="off"
+        required
+      >
+      <button class="add-button" type="submit">
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>Add</span>
+      </button>
+      <div class="task-metadata">
+        <label class="metadata-field">
+          <span>GROUP</span>
+          <select id="task-group" aria-label="Task group"></select>
+        </label>
+        <label class="metadata-field due-field">
+          <span>DUE DATE</span>
+          <input id="task-due" type="date" aria-label="Due date (optional)">
+        </label>
+      </div>
+    </form>
+
+    <nav class="filter-bar" id="filter-bar" aria-label="Filter tasks"></nav>
+    <div class="group-scope">
+      <nav class="group-filters" id="group-filters" aria-label="Filter by group"></nav>
+      <details class="group-manager">
+        <summary><span>Manage groups</span><span class="manager-plus" aria-hidden="true">+</span></summary>
+        <div class="manager-panel">
+          <form class="new-group-form" id="new-group-form">
+            <label class="sr-only" for="new-group-name">New group name</label>
+            <input id="new-group-name" type="text" maxlength="32" placeholder="Name a new group" required>
+            <button type="submit">Create</button>
+          </form>
+          <ul class="group-list" id="group-list"></ul>
+          <p class="manager-message" id="manager-message" aria-live="polite"></p>
+        </div>
+      </details>
+    </div>
+
+    <section aria-labelledby="list-title">
+      <div class="list-heading">
+        <h2 id="list-title">Missions</h2>
+        <span class="remaining" id="remaining" aria-live="polite"></span>
+      </div>
+      <ul class="task-list" id="task-list" aria-label="Tasks"></ul>
+      <div class="empty-state" id="empty-state" hidden>
+        <span class="empty-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="m6 12 4 4 8-8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <p>Your list is clear. Enjoy the breathing room.</p>
+      </div>
+    </section>
+
+    <footer class="app-footer" id="app-footer">
+      <span class="storage-dot" aria-hidden="true"></span>
+      <span id="storage-message">Saved on this device</span>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      const TASKS_KEY = "daymark.tasks.v1";
+      const GROUPS_KEY = "daymark.groups.v1";
+      const DEFAULT_GROUP = "Inbox";
+      const taskList = document.getElementById("task-list");
+      const taskForm = document.getElementById("task-form");
+      const taskInput = document.getElementById("task-input");
+      const taskDue = document.getElementById("task-due");
+      const taskGroup = document.getElementById("task-group");
+      const remaining = document.getElementById("remaining");
+      const emptyState = document.getElementById("empty-state");
+      const filterBar = document.getElementById("filter-bar");
+      const groupFilters = document.getElementById("group-filters");
+      const groupList = document.getElementById("group-list");
+      const groupForm = document.getElementById("new-group-form");
+      const groupNameInput = document.getElementById("new-group-name");
+      const managerMessage = document.getElementById("manager-message");
+      const footer = document.getElementById("app-footer");
+      const storageMessage = document.getElementById("storage-message");
+      const filterOptions = [
+        { id: "all", label: "All" },
+        { id: "open", label: "Active" },
+        { id: "today", label: "Today" },
+        { id: "overdue", label: "Overdue" },
+        { id: "done", label: "Done" }
+      ];
+      const starterTasks = [
+        { id: "starter-1", text: "Review this week's priorities", completed: false, dueDate: localDateKey(), group: DEFAULT_GROUP },
+        { id: "starter-2", text: "Send the project update", completed: false, dueDate: dateOffset(1), group: DEFAULT_GROUP },
+        { id: "starter-3", text: "Take a proper lunch break", completed: false, dueDate: "", group: DEFAULT_GROUP }
+      ];
+      let canSave = true;
+      let groups = readGroups();
+      let tasks = readTasks();
+      let activeFilter = "all";
+      let activeGroup = "*";
+
+      function localDateKey(date = new Date()) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+
+      function dateOffset(days) {
+        const date = new Date();
+        date.setDate(date.getDate() + days);
+        return localDateKey(date);
+      }
+
+      function showStorageWarning(message) {
+        canSave = false;
+        footer.classList.add("has-warning");
+        storageMessage.textContent = message;
+      }
+
+      function readGroups() {
+        try {
+          const saved = localStorage.getItem(GROUPS_KEY);
+          if (saved === null) {
+            localStorage.setItem(GROUPS_KEY, JSON.stringify([DEFAULT_GROUP]));
+            return [DEFAULT_GROUP];
+          }
+          const parsed = JSON.parse(saved);
+          if (!Array.isArray(parsed) || !parsed.length ||
+              !parsed.every(group => typeof group === "string" && group.trim())) {
+            throw new Error("Saved groups have an unexpected format.");
+          }
+          return [...new Set(parsed)];
+        } catch (error) {
+          showStorageWarning("Couldn't load groups; changes may not be saved.");
+          return [DEFAULT_GROUP];
+        }
+      }
+
+      function isTask(value) {
+        return value &&
+          typeof value.id === "string" &&
+          typeof value.text === "string" &&
+          value.text.trim().length > 0 &&
+          typeof value.completed === "boolean";
+      }
+
+      function isDateKey(value) {
+        if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const [year, month, day] = value.split("-").map(Number);
+        const date = new Date(year, month - 1, day);
+        return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+      }
+
+      function readTasks() {
+        try {
+          const saved = localStorage.getItem(TASKS_KEY);
+          if (saved === null) return starterTasks.map(task => ({ ...task }));
+          const parsed = JSON.parse(saved);
+          if (!Array.isArray(parsed) || !parsed.every(isTask)) {
+            throw new Error("Saved tasks have an unexpected format.");
+          }
+          return parsed.map(task => ({
+            ...task,
+            dueDate: isDateKey(task.dueDate) ? task.dueDate : "",
+            group: typeof task.group === "string" && groups.includes(task.group) ? task.group : groups[0]
+          }));
+        } catch (error) {
+          showStorageWarning("Couldn't load saved tasks; starter list shown for now.");
+          return starterTasks.map(task => ({ ...task }));
+        }
+      }
+
+      function saveState() {
+        if (!canSave) return;
+        try {
+          localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+          localStorage.setItem(GROUPS_KEY, JSON.stringify(groups));
+          storageMessage.textContent = "Saved on this device";
+          footer.classList.remove("has-warning");
+        } catch (error) {
+          showStorageWarning("Couldn't save changes; check browser storage.");
+        }
+      }
+
+      function taskIsVisible(task) {
+        if (activeGroup !== "*" && task.group !== activeGroup) return false;
+        const today = localDateKey();
+        switch (activeFilter) {
+          case "open": return !task.completed;
+          case "today": return task.dueDate === today;
+          case "overdue": return !task.completed && task.dueDate && task.dueDate < today;
+          case "done": return task.completed;
+          default: return true;
+        }
+      }
+
+      function dueLabel(date, completed) {
+        if (!date) return null;
+        const [year, month, day] = date.split("-").map(Number);
+        const [todayYear, todayMonth, todayDay] = localDateKey().split("-").map(Number);
+        const offset = Math.round(
+          (Date.UTC(year, month - 1, day) - Date.UTC(todayYear, todayMonth - 1, todayDay)) / 86400000
+        );
+        if (offset === 0) return { text: "Today", overdue: false };
+        if (offset === 1) return { text: "Tomorrow", overdue: false };
+        const formatted = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" })
+          .format(new Date(year, month - 1, day));
+        return {
+          text: offset < 0 && !completed ? `Overdue · ${formatted}` : formatted,
+          overdue: offset < 0 && !completed
+        };
+      }
+
+      function makeTaskRow(task, index) {
+        const row = document.createElement("li");
+        row.className = `task-row${task.completed ? " is-complete" : ""}`;
+        row.style.animationDelay = `${Math.min(index, 5) * 30}ms`;
+        row.dataset.taskId = task.id;
+
+        const toggle = document.createElement("input");
+        toggle.className = "task-toggle";
+        toggle.type = "checkbox";
+        toggle.checked = task.completed;
+        toggle.setAttribute("aria-label", `Complete ${task.text}`);
+
+        const label = document.createElement("label");
+        label.className = "task-label";
+        label.append(toggle);
+
+        const content = document.createElement("span");
+        content.className = "task-content";
+        const text = document.createElement("span");
+        text.className = "task-text";
+        text.textContent = task.text;
+        content.append(text);
+
+        const badges = document.createElement("span");
+        badges.className = "task-badges";
+        const groupBadge = document.createElement("span");
+        groupBadge.className = "task-group-badge";
+        groupBadge.textContent = task.group;
+        badges.append(groupBadge);
+        const due = dueLabel(task.dueDate, task.completed);
+        if (due) {
+          const dueBadge = document.createElement("time");
+          dueBadge.className = `due-badge${due.overdue ? " is-overdue" : ""}`;
+          dueBadge.dateTime = task.dueDate;
+          dueBadge.textContent = due.text;
+          badges.append(dueBadge);
+        }
+        content.append(badges);
+        label.append(content);
+
+        const remove = document.createElement("button");
+        remove.className = "delete-button";
+        remove.type = "button";
+        remove.setAttribute("aria-label", `Delete ${task.text}`);
+        remove.innerHTML = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4.5 6h11M8 6V4.5h4V6m2.5 0-.6 9.5h-7.8L5.5 6m3 3v4m3-4v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+        row.append(label, remove);
+        return row;
+      }
+
+      function renderFilters() {
+        filterBar.replaceChildren(...filterOptions.map(option => {
+          const button = document.createElement("button");
+          button.className = "filter-button";
+          button.type = "button";
+          button.dataset.filter = option.id;
+          button.setAttribute("aria-pressed", String(activeFilter === option.id));
+          button.textContent = option.label;
+          return button;
+        }));
+
+        const allGroups = document.createElement("button");
+        allGroups.className = "group-chip";
+        allGroups.type = "button";
+        allGroups.dataset.group = "*";
+        allGroups.setAttribute("aria-pressed", String(activeGroup === "*"));
+        allGroups.textContent = "All groups";
+        const groupButtons = groups.map(group => {
+          const button = document.createElement("button");
+          button.className = "group-chip";
+          button.type = "button";
+          button.dataset.group = group;
+          button.setAttribute("aria-pressed", String(activeGroup === group));
+          button.textContent = group;
+          return button;
+        });
+        groupFilters.replaceChildren(allGroups, ...groupButtons);
+      }
+
+      function renderGroupOptions() {
+        const selected = groups.includes(taskGroup.value) ? taskGroup.value : groups[0];
+        taskGroup.replaceChildren(...groups.map(group => {
+          const option = document.createElement("option");
+          option.value = group;
+          option.textContent = group;
+          option.selected = group === selected;
+          return option;
+        }));
+      }
+
+      function renderGroupManager() {
+        groupList.replaceChildren(...groups.map(group => {
+          const item = document.createElement("li");
+          const form = document.createElement("form");
+          form.className = "group-edit-form";
+          form.dataset.groupName = group;
+
+          const input = document.createElement("input");
+          input.type = "text";
+          input.value = group;
+          input.maxLength = 32;
+          input.setAttribute("aria-label", `Rename ${group}`);
+          input.required = true;
+
+          const save = document.createElement("button");
+          save.type = "submit";
+          save.textContent = "Save";
+
+          const remove = document.createElement("button");
+          remove.className = "remove-group";
+          remove.type = "button";
+          remove.dataset.deleteGroup = group;
+          remove.setAttribute("aria-label", `Delete group ${group}`);
+          remove.textContent = "×";
+
+          form.append(input, save, remove);
+          item.append(form);
+          return item;
+        }));
+      }
+
+      function updateRemaining() {
+        const openCount = tasks.filter(task => !task.completed).length;
+        remaining.textContent = `${openCount} active`;
+      }
+
+      function render() {
+        renderFilters();
+        renderGroupOptions();
+        renderGroupManager();
+        const visible = tasks.filter(taskIsVisible);
+        taskList.replaceChildren(...visible.map(makeTaskRow));
+        updateRemaining();
+        emptyState.hidden = visible.length > 0;
+        emptyState.querySelector("p").textContent = tasks.length
+          ? "No missions match this view. Try another filter."
+          : "Your board is clear. Pick your next mission.";
+      }
+
+      function newId() {
+        if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+          return crypto.randomUUID();
+        }
+        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function setManagerMessage(message, isError = false) {
+        managerMessage.textContent = message;
+        managerMessage.dataset.error = String(isError);
+      }
+
+      taskForm.addEventListener("submit", event => {
+        event.preventDefault();
+        const text = taskInput.value.trim();
+        if (!text) {
+          taskInput.focus();
+          return;
+        }
+
+        const group = taskGroup.value || groups[0];
+        tasks.push({
+          id: newId(),
+          text,
+          completed: false,
+          dueDate: taskDue.value,
+          group
+        });
+        activeFilter = "all";
+        activeGroup = group;
+        saveState();
+        render();
+        taskForm.reset();
+        taskGroup.value = group;
+        taskInput.focus();
+      });
+
+      filterBar.addEventListener("click", event => {
+        const button = event.target.closest("[data-filter]");
+        if (!button) return;
+        activeFilter = button.dataset.filter;
+        render();
+        filterBar.querySelector(`[data-filter="${activeFilter}"]`).focus();
+      });
+
+      groupFilters.addEventListener("click", event => {
+        const button = event.target.closest("[data-group]");
+        if (!button) return;
+        activeGroup = button.dataset.group;
+        render();
+        [...groupFilters.querySelectorAll("[data-group]")].find(item => item.dataset.group === activeGroup)?.focus();
+      });
+
+      taskList.addEventListener("change", event => {
+        if (!event.target.matches(".task-toggle")) return;
+        const row = event.target.closest("[data-task-id]");
+        const task = tasks.find(item => item.id === row.dataset.taskId);
+        if (!task) return;
+        task.completed = event.target.checked;
+        saveState();
+        row.classList.toggle("is-complete", task.completed);
+        updateRemaining();
+        if (!taskIsVisible(task)) {
+          row.classList.add("task-row-exiting");
+          window.setTimeout(render, 170);
+        }
+      });
+
+      taskList.addEventListener("click", event => {
+        const button = event.target.closest(".delete-button");
+        if (!button) return;
+        const row = button.closest("[data-task-id]");
+        tasks = tasks.filter(task => task.id !== row.dataset.taskId);
+        saveState();
+        render();
+      });
+
+      groupForm.addEventListener("submit", event => {
+        event.preventDefault();
+        const name = groupNameInput.value.trim();
+        if (!name) return;
+        if (groups.some(group => group.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+          setManagerMessage("That group already exists.", true);
+          return;
+        }
+        groups.push(name);
+        activeGroup = name;
+        saveState();
+        render();
+        taskGroup.value = name;
+        groupNameInput.value = "";
+        setManagerMessage(`Created "${name}".`);
+        groupNameInput.focus();
+      });
+
+      groupList.addEventListener("submit", event => {
+        const form = event.target.closest(".group-edit-form");
+        if (!form) return;
+        event.preventDefault();
+        const previous = form.dataset.groupName;
+        const next = form.querySelector("input").value.trim();
+        if (!next) return;
+        if (groups.some(group => group !== previous && group.toLocaleLowerCase() === next.toLocaleLowerCase())) {
+          setManagerMessage("That group already exists.", true);
+          return;
+        }
+        if (next === previous) return;
+        groups = groups.map(group => group === previous ? next : group);
+        tasks.forEach(task => {
+          if (task.group === previous) task.group = next;
+        });
+        if (activeGroup === previous) activeGroup = next;
+        if (taskGroup.value === previous) taskGroup.value = next;
+        saveState();
+        render();
+        setManagerMessage(`Renamed to "${next}".`);
+      });
+
+      groupList.addEventListener("click", event => {
+        const button = event.target.closest("[data-delete-group]");
+        if (!button) return;
+        const name = button.dataset.deleteGroup;
+        if (groups.length === 1) {
+          setManagerMessage("Keep at least one group on your board.", true);
+          return;
+        }
+        const destination = groups.find(group => group !== name);
+        const moving = tasks.filter(task => task.group === name).length;
+        const confirmation = moving
+          ? `Delete "${name}"? Its ${moving} mission${moving === 1 ? "" : "s"} will move to "${destination}".`
+          : `Delete the "${name}" group?`;
+        if (!window.confirm(confirmation)) return;
+        groups = groups.filter(group => group !== name);
+        tasks.forEach(task => {
+          if (task.group === name) task.group = destination;
+        });
+        if (activeGroup === name) activeGroup = "*";
+        if (taskGroup.value === name) taskGroup.value = destination;
+        saveState();
+        render();
+        setManagerMessage(moving ? `Moved ${moving} mission${moving === 1 ? "" : "s"} to "${destination}".` : `Deleted "${name}".`);
+      });
+
+      const now = new Date();
+      const today = document.getElementById("today");
+      document.querySelector('meta[name="theme-color"]').content =
+        window.matchMedia("(prefers-color-scheme: dark)").matches ? "#080d0c" : "#e9ecea";
+      today.textContent = new Intl.DateTimeFormat(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric"
+      }).format(now);
+      today.dateTime = localDateKey(now);
+      saveState();
+      render();
+    })();
+  </script>
+</body>
+</html>
