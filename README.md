@@ -8,7 +8,7 @@ Daymark is a local-first to-do PWA with due dates, filters, editable task groups
 2. Tap **Install app**, or open Chrome's **⋮** menu and choose **Install app** or **Add to Home screen**.
 3. Open Daymark once while online so its app files can be cached. Tasks and groups are stored in that browser on that device; clearing site data removes them.
 
-For alarms, set a deadline date and time, enable **Set an alarm**, choose a lead time, and allow notifications. Android uses the notification sound and vibration settings for Daymark. A PWA cannot force an exact alarm, override Do Not Disturb, or select a custom alarm tone; delivery may be delayed by Android or the push service. The reminder service must be deployed and reachable when you create or change an alarm.
+For alarms, set a deadline date and time, enable **Set an alarm**, choose a lead time, and allow notifications. Android uses the notification sound and vibration settings for Daymark. A PWA cannot force an exact alarm, override Do Not Disturb, or select a custom alarm tone; delivery may be delayed by Android or the push service. The reminder service must be deployed and reachable when you create or cancel an alarm. If you clear Daymark's site data, an already-synced alarm may still fire.
 
 ## Enable deadline alarms
 

@@ -256,9 +256,21 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 				   title = excluded.title,
 				   due_at = excluded.due_at,
 				   fire_at = excluded.fire_at,
-				   attempts = 0,
-				   last_attempt_at = NULL,
-				   sent_at = NULL`,
+				   attempts = CASE
+				     WHEN reminders.title = excluded.title
+				      AND reminders.due_at = excluded.due_at
+				      AND reminders.fire_at = excluded.fire_at
+				     THEN reminders.attempts ELSE 0 END,
+				   last_attempt_at = CASE
+				     WHEN reminders.title = excluded.title
+				      AND reminders.due_at = excluded.due_at
+				      AND reminders.fire_at = excluded.fire_at
+				     THEN reminders.last_attempt_at ELSE NULL END,
+				   sent_at = CASE
+				     WHEN reminders.title = excluded.title
+				      AND reminders.due_at = excluded.due_at
+				      AND reminders.fire_at = excluded.fire_at
+				     THEN reminders.sent_at ELSE NULL END`,
 			)
 				.bind(deviceId, taskId, title.trim(), dueAt, dueAt - leadMinutes * 60_000)
 				.run();
@@ -308,13 +320,16 @@ async function sendDueReminders(env: Env): Promise<void> {
 			console.error(JSON.stringify({ event: "invalid_subscription", id: reminder.id }));
 			continue;
 		}
-		await env.DB.prepare(
+		const claimed = await env.DB.prepare(
 			`UPDATE reminders
 			 SET attempts = attempts + 1, last_attempt_at = ?
-			 WHERE device_id = ? AND id = ? AND sent_at IS NULL`,
+			 WHERE device_id = ? AND id = ? AND sent_at IS NULL
+			   AND attempts < ?
+			   AND (last_attempt_at IS NULL OR last_attempt_at <= ?)`,
 		)
-			.bind(now, reminder.device_id, reminder.id)
+			.bind(now, reminder.device_id, reminder.id, MAX_ATTEMPTS, now - RETRY_DELAY_MS)
 			.run();
+		if (claimed.meta.changes !== 1) continue;
 		try {
 			const payload = await buildPushPayload(
 				{
@@ -325,7 +340,7 @@ async function sendDueReminders(env: Env): Promise<void> {
 						data: {
 							taskId: reminder.id,
 							dueAt: reminder.due_at,
-							url: `${env.APP_ORIGIN}/`,
+							url: env.APP_URL,
 						},
 					},
 					options: { ttl: 86_400, urgency: "high" },

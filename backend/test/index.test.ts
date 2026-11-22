@@ -80,6 +80,7 @@ it("rejects reminder writes from unregistered devices", async () => {
 });
 
 it("registers a device, stores a reminder, and cancels it", async () => {
+	const dueAt = Date.now() + 3_600_000;
 	const registered = await request("/api/device", {
 		method: "PUT",
 		headers: {
@@ -98,7 +99,7 @@ it("registers a device, stores a reminder, and cancels it", async () => {
 		},
 		body: JSON.stringify({
 			title: "Prepare report",
-			dueAt: Date.now() + 3_600_000,
+			dueAt,
 			leadMinutes: 15,
 		}),
 	});
@@ -109,6 +110,25 @@ it("registers a device, stores a reminder, and cancels it", async () => {
 	}>();
 	expect(stored?.title).toBe("Prepare report");
 	expect(stored?.fire_at).toBeGreaterThan(Date.now());
+
+	await env.DB.prepare("UPDATE reminders SET sent_at = ?").bind(Date.now()).run();
+	const repeatedSync = await request("/api/reminders/task-1", {
+		method: "PUT",
+		headers: {
+			Authorization: `Bearer ${DEVICE_TOKEN}`,
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			title: "Prepare report",
+			dueAt,
+			leadMinutes: 15,
+		}),
+	});
+	expect(repeatedSync.status).toBe(200);
+	const stillSent = await env.DB.prepare("SELECT sent_at FROM reminders").first<{
+		sent_at: number;
+	}>();
+	expect(stillSent?.sent_at).not.toBeNull();
 
 	const deleted = await request("/api/reminders/task-1", {
 		method: "DELETE",
