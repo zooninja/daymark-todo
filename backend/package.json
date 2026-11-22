@@ -5,7 +5,7 @@
 	"scripts": {
 		"dev": "cf dev",
 		"build": "cf build",
-		"deploy": "cf deploy",
+		"deploy": "cf deploy --secrets-file .dev.vars",
 		"generate:vapid": "node scripts/generate-vapid.mjs",
 		"check": "cf workers types && vp check",
 		"format": "vp fmt",

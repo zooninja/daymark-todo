@@ -283,13 +283,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 }
 
 async function sendDueReminders(env: Env): Promise<void> {
-	if (
-		!env.VAPID_PUBLIC_KEY ||
-		env.VAPID_PUBLIC_KEY.startsWith("REPLACE_WITH_") ||
-		!env.VAPID_PRIVATE_KEY
-	) {
-		throw new Error("VAPID keys are not configured.");
-	}
 	const now = Date.now();
 	const result = await env.DB.prepare(
 		`SELECT r.device_id, r.id, r.title, r.due_at,
@@ -306,12 +299,18 @@ async function sendDueReminders(env: Env): Promise<void> {
 		.bind(now, MAX_ATTEMPTS, now - RETRY_DELAY_MS)
 		.all<PendingReminder>();
 
+	const reminders = result.results ?? [];
+	if (!reminders.length) return;
+	if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) {
+		throw new Error("VAPID keys are not configured.");
+	}
+
 	const vapid: VapidKeys = {
 		subject: env.VAPID_SUBJECT,
 		publicKey: env.VAPID_PUBLIC_KEY,
 		privateKey: env.VAPID_PRIVATE_KEY,
 	};
-	for (const reminder of result.results ?? []) {
+	for (const reminder of reminders) {
 		const subscription = parseSubscription({
 			endpoint: reminder.endpoint,
 			keys: { p256dh: reminder.p256dh, auth: reminder.auth },

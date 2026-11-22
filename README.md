@@ -17,7 +17,7 @@ The static app works without a server, but background reminders require the Clou
 1. From `backend/`, run `npm install` and `npm run generate:vapid`. The public key is printed; the private key is saved in the gitignored `backend/.dev.vars`.
 2. Put the printed public key in `VAPID_PUBLIC_KEY` in `backend/cloudflare.config.ts`.
 3. Sign in with `cf auth login`, create the D1 database with `cf d1 create --name daymark-alerts`, then apply `backend/migrations` using the returned database ID: `cf d1 migrations apply <DATABASE_ID> --dir migrations` (run from `backend/`).
-4. Deploy with `npm run deploy` from `backend/`. In Cloudflare, add `VAPID_PRIVATE_KEY` as a Worker secret using the value in `backend/.dev.vars`; never commit that file.
+4. Deploy with `npm run deploy` from `backend/`. This uploads the private key as a Worker secret; `backend/.dev.vars` is gitignored and must never be committed. For an existing Worker, you can replace the secret in **Workers & Pages → daymark-alerts → Settings → Variables and Secrets**.
 5. Set the `daymark-alert-api` meta tag's `content` in `index.html` to the deployed Worker URL (for example, `https://daymark-alerts.<your-workers-subdomain>.workers.dev`), then publish the updated app to GitHub Pages.
 
 The scheduled Worker checks once per minute. Push notifications use the Android system notification channel, not a native exact-alarm API. Tasks without alarms, group names, and completed task history are never sent to the Worker.
