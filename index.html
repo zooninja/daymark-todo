@@ -4,6 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080d0c">
+  <meta name="description" content="A quiet, local-first mission board for focused work.">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/daymark-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="./icons/daymark-192.png">
   <title>Daymark — quiet focus</title>
   <style>
     :root {
@@ -122,6 +129,27 @@
       font-size: 13px;
       font-weight: 550;
       text-align: right;
+    }
+
+    .install-button {
+      flex: 0 0 auto;
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .install-button:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .install-button[hidden] {
+      display: none;
     }
 
     .intro {
@@ -394,6 +422,16 @@
 
     .app-footer.has-warning .storage-dot {
       background: #d98537;
+    }
+
+    .pwa-status {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .pwa-status[hidden] {
+      display: none;
     }
 
     .task-form {
@@ -800,6 +838,7 @@
         </span>
         <span>Daymark</span>
       </div>
+      <button class="install-button" id="install-button" type="button" hidden>Install app</button>
       <time class="date" id="today"></time>
     </header>
 
@@ -875,6 +914,7 @@
       <span class="storage-dot" aria-hidden="true"></span>
       <span id="storage-message">Saved on this device</span>
     </footer>
+    <p class="pwa-status" id="pwa-status" aria-live="polite" hidden></p>
   </main>
 
   <script>
@@ -897,6 +937,8 @@
       const managerMessage = document.getElementById("manager-message");
       const footer = document.getElementById("app-footer");
       const storageMessage = document.getElementById("storage-message");
+      const installButton = document.getElementById("install-button");
+      const pwaStatus = document.getElementById("pwa-status");
       const filterOptions = [
         { id: "all", label: "All" },
         { id: "open", label: "Active" },
@@ -914,6 +956,7 @@
       let tasks = readTasks();
       let activeFilter = "all";
       let activeGroup = "*";
+      let deferredInstallPrompt = null;
 
       function localDateKey(date = new Date()) {
         const year = date.getFullYear();
@@ -1322,6 +1365,44 @@
       today.dateTime = localDateKey(now);
       saveState();
       render();
+
+      window.addEventListener("beforeinstallprompt", event => {
+        event.preventDefault();
+        deferredInstallPrompt = event;
+        installButton.hidden = false;
+      });
+
+      installButton.addEventListener("click", async () => {
+        if (!deferredInstallPrompt) return;
+        try {
+          await deferredInstallPrompt.prompt();
+          const choice = await deferredInstallPrompt.userChoice;
+          if (choice.outcome === "accepted") installButton.hidden = true;
+          deferredInstallPrompt = null;
+        } catch (error) {
+          pwaStatus.textContent = "The install prompt couldn't open. Use your browser menu to install Daymark.";
+          pwaStatus.hidden = false;
+          deferredInstallPrompt = null;
+        }
+      });
+
+      window.addEventListener("appinstalled", () => {
+        installButton.hidden = true;
+        pwaStatus.textContent = "Daymark is installed.";
+        pwaStatus.hidden = false;
+      });
+
+      if ("serviceWorker" in navigator && location.protocol === "https:") {
+        navigator.serviceWorker.register("./sw.js")
+          .then(() => {
+            pwaStatus.textContent = "Offline access is ready after this first visit.";
+            pwaStatus.hidden = false;
+          })
+          .catch(() => {
+            pwaStatus.textContent = "Offline setup failed; Daymark still works online.";
+            pwaStatus.hidden = false;
+          });
+      }
     })();
   </script>
 </body>
