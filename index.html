@@ -490,6 +490,131 @@
       cursor: pointer;
     }
 
+    .metadata-field .time-picker-trigger {
+      width: 100%;
+      min-width: 0;
+      height: 31px;
+      padding: 0 7px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 12px;
+      letter-spacing: 0;
+      text-align: left;
+    }
+
+    .time-picker-trigger[data-empty="true"] {
+      color: var(--muted);
+    }
+
+    .metadata-field .time-picker-trigger:focus-visible {
+      border-color: var(--focus);
+      outline: 0;
+    }
+
+    .time-dialog {
+      width: min(calc(100% - 32px), 360px);
+      margin: auto;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface-raised);
+      color: var(--ink);
+      box-shadow: var(--shadow);
+    }
+
+    .time-dialog::backdrop {
+      background: rgb(0 0 0 / 58%);
+    }
+
+    .time-dialog h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: -0.02em;
+    }
+
+    .time-dialog-note {
+      margin: 4px 0 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .time-picker-fields {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      gap: 12px;
+    }
+
+    .time-picker-fields label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .time-picker-fields input {
+      width: 100%;
+      min-width: 0;
+      height: 44px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 18px;
+    }
+
+    .time-picker-fields input:focus-visible {
+      border-color: var(--focus);
+      outline: 2px solid color-mix(in srgb, var(--focus) 25%, transparent);
+      outline-offset: 1px;
+    }
+
+    .time-picker-separator {
+      padding-bottom: 8px;
+      color: var(--muted);
+      font-size: 20px;
+    }
+
+    .time-dialog-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+
+    .time-dialog-actions button {
+      min-height: 38px;
+      padding: 0 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .time-dialog-actions button:hover {
+      border-color: var(--accent);
+    }
+
+    .time-dialog-actions .time-set-button {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: var(--page);
+    }
+
+    .time-dialog-actions .time-set-button:hover {
+      background: var(--accent-hover);
+    }
+
     .alarm-settings {
       display: grid;
       grid-column: 1 / -1;
@@ -997,7 +1122,8 @@
         </label>
         <label class="metadata-field">
           <span>DEADLINE TIME</span>
-          <input id="task-time" type="time" aria-label="Deadline time (required for alarms)">
+          <input id="task-time" type="hidden">
+          <button class="time-picker-trigger" id="task-time-trigger" type="button" aria-haspopup="dialog" aria-controls="time-dialog" data-empty="true">Set time</button>
         </label>
         <div class="alarm-settings">
           <label class="alarm-toggle">
@@ -1060,6 +1186,29 @@
       <span id="storage-message">Saved on this device</span>
     </footer>
     <p class="pwa-status" id="pwa-status" aria-live="polite" hidden></p>
+
+    <dialog class="time-dialog" id="time-dialog" aria-labelledby="time-dialog-title">
+      <form id="time-picker-form">
+        <h2 id="time-dialog-title">Set deadline time</h2>
+        <p class="time-dialog-note">Enter the time in 24-hour format.</p>
+        <div class="time-picker-fields">
+          <label>
+            Hour
+            <input id="time-picker-hour" type="number" min="0" max="23" step="1" inputmode="numeric" required>
+          </label>
+          <span class="time-picker-separator" aria-hidden="true">:</span>
+          <label>
+            Minute
+            <input id="time-picker-minute" type="number" min="0" max="59" step="1" inputmode="numeric" required>
+          </label>
+        </div>
+        <div class="time-dialog-actions">
+          <button id="time-picker-clear" type="button">Clear</button>
+          <button id="time-picker-cancel" type="button">Cancel</button>
+          <button class="time-set-button" type="submit">Set time</button>
+        </div>
+      </form>
+    </dialog>
   </main>
 
   <script>
@@ -1075,6 +1224,11 @@
       const taskInput = document.getElementById("task-input");
       const taskDue = document.getElementById("task-due");
       const taskTime = document.getElementById("task-time");
+      const taskTimeTrigger = document.getElementById("task-time-trigger");
+      const timeDialog = document.getElementById("time-dialog");
+      const timePickerForm = document.getElementById("time-picker-form");
+      const timePickerHour = document.getElementById("time-picker-hour");
+      const timePickerMinute = document.getElementById("time-picker-minute");
       const taskAlarm = document.getElementById("task-alarm");
       const alarmLeadValue = document.getElementById("alarm-lead-value");
       const alarmLeadUnit = document.getElementById("alarm-lead-unit");
@@ -1576,7 +1730,6 @@
       function updateAlarmControls() {
         const enabled = taskAlarm.checked;
         taskDue.required = enabled;
-        taskTime.required = enabled;
         alarmLeadValue.required = enabled;
         alarmLeadValue.disabled = !enabled;
         alarmLeadUnit.disabled = !enabled;
@@ -1589,6 +1742,50 @@
 
       taskAlarm.addEventListener("change", updateAlarmControls);
       alarmLeadUnit.addEventListener("change", updateAlarmControls);
+      function updateTaskTimeDisplay() {
+        const hasTime = isTimeKey(taskTime.value);
+        taskTimeTrigger.textContent = hasTime ? taskTime.value : "Set time";
+        taskTimeTrigger.dataset.empty = String(!hasTime);
+        taskTimeTrigger.setAttribute("aria-label", hasTime
+          ? `Deadline time: ${taskTime.value}. Change time`
+          : "Set deadline time (required for alarms)");
+      }
+
+      taskTimeTrigger.addEventListener("click", () => {
+        const [hour, minute] = isTimeKey(taskTime.value) ? taskTime.value.split(":") : ["09", "00"];
+        timePickerHour.value = String(Number(hour));
+        timePickerMinute.value = minute;
+        timeDialog.showModal();
+        timePickerHour.focus();
+      });
+
+      timePickerForm.addEventListener("submit", event => {
+        event.preventDefault();
+        if (!timePickerForm.reportValidity()) return;
+        const hour = Number(timePickerHour.value);
+        const minute = Number(timePickerMinute.value);
+        if (!Number.isInteger(hour) || hour < 0 || hour > 23 ||
+            !Number.isInteger(minute) || minute < 0 || minute > 59) {
+          timePickerForm.reportValidity();
+          return;
+        }
+        taskTime.value = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+        updateTaskTimeDisplay();
+        timeDialog.close();
+      });
+
+      document.getElementById("time-picker-clear").addEventListener("click", () => {
+        taskTime.value = "";
+        updateTaskTimeDisplay();
+        timeDialog.close();
+      });
+
+      document.getElementById("time-picker-cancel").addEventListener("click", () => {
+        timeDialog.close();
+      });
+
+      timeDialog.addEventListener("close", () => taskTimeTrigger.focus());
+
       retryAlarmsButton.addEventListener("click", async () => {
         retryAlarmsButton.disabled = true;
         setAlarmFeedback("Syncing alarms…");
@@ -1617,12 +1814,12 @@
         const alarmEnabled = taskAlarm.checked;
         if (alarmEnabled && (!isDateKey(taskDue.value) || !isTimeKey(taskTime.value))) {
           setAlarmFeedback("An alarm needs both a valid deadline date and time.", true);
-          (taskDue.value ? taskTime : taskDue).focus();
+          (taskDue.value ? taskTimeTrigger : taskDue).focus();
           return;
         }
         if (alarmEnabled && new Date(`${taskDue.value}T${taskTime.value}`).getTime() <= Date.now()) {
           setAlarmFeedback("Choose a future deadline before setting an alarm.", true);
-          taskTime.focus();
+          taskTimeTrigger.focus();
           return;
         }
 
@@ -1657,6 +1854,7 @@
         saveState();
         render();
         taskForm.reset();
+        updateTaskTimeDisplay();
         updateAlarmControls();
         taskGroup.value = group;
         taskInput.focus();
